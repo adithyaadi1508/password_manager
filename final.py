@@ -7,8 +7,12 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 import stdiomask
 from selenium.webdriver.common.keys import Keys
+from cryptography.fernet import Fernet
 import time
- 
+
+key = Fernet.generate_key()
+cipher_suite = Fernet(key)
+
 sample_otp=[1,2,3,4]
 random_otp=random.randint(1111,9999)
 
@@ -21,12 +25,18 @@ def new_user():
     insta_email=input("Enter email associated with instagram account:")
     insta_password=stdiomask.getpass(prompt="Enter password associated with instagram:")
     
-    with open("facebook.txt","a") as f:
-        f.write(fb_email +"\n"+ fb_password)
-    with open("instagram.txt","a") as g:
-        g.write(insta_email +"\n"+ insta_password)
-    with open("masterpass_email.txt","a") as h:
-        h.write(master_pass+"\n"+email)
+   with open("facebook.txt", "ab") as f:
+        fb_email_encrypted = cipher_suite.encrypt(fb_email.encode())
+        fb_password_encrypted = cipher_suite.encrypt(fb_password.encode())
+        f.write(fb_email_encrypted + b"\n" + fb_password_encrypted + b"\n")
+    with open("instagram.txt", "ab") as g:
+        insta_email_encrypted = cipher_suite.encrypt(insta_email.encode())
+        insta_password_encrypted = cipher_suite.encrypt(insta_password.encode())
+        g.write(insta_email_encrypted + b"\n" + insta_password_encrypted + b"\n")
+    with open("masterpass_email.txt", "ab") as h:
+        master_pass_encrypted = cipher_suite.encrypt(master_pass.encode())
+        email_encrypted = cipher_suite.encrypt(email.encode())
+        h.write(master_pass_encrypted + b"\n" + email_encrypted + b"\n")
 
     print("You have successfully entered your details, please select existing user for accesing the websites through automation")
     
@@ -50,21 +60,21 @@ def otp_email():
 def facebook_login():
     #This function automates the process of logging into facebook
     with open("facebook.txt","r") as q:
-        a=q.readline()
-        b=q.readline() 
+         fb_email_encrypted = q.readline()
+        fb_password_encrypted = q.readline() 
                    
-    usr=a
-    pwd=b
+     fb_email = cipher_suite.decrypt(fb_email_encrypted).decode()
+    fb_password = cipher_suite.decrypt(fb_password_encrypted).decode()
     driver = webdriver.Chrome(ChromeDriverManager().install())
     driver.get('https://www.facebook.com/')
     print ("Opened facebook")
     sleep(1)
     username_box = driver.find_element_by_id('email')
-    username_box.send_keys(usr)
+    username_box.send_keys(fb_email)
     print ("Email Id entered")
     sleep(1)
     password_box = driver.find_element_by_id('pass')
-    password_box.send_keys(pwd)
+    password_box.send_keys(fb_password)
     print ("Password entered")
     login_box = driver.find_element_by_id('loginbutton')
     login_box.click()
@@ -77,19 +87,19 @@ def instagram_login():
     #This function automates the instagram login process
 
     with open("instagram.txt","r") as d:
-        a=d.readline()
-        b=d.readline()
+        insta_email_encrypted = d.readline()
+        insta_password_encrypted = d.readline()
     
-    usr=a
-    pwd=b
+    insta_email = cipher_suite.decrypt(insta_email_encrypted).decode()
+    insta_password = cipher_suite.decrypt(insta_password_encrypted).decode()
     browser  =  webdriver.Chrome(ChromeDriverManager().install())
     sleep(2)
     browser.get('https://www.instagram.com/accounts/login/?source=auth_switcher')
     sleep(3)
     username = browser.find_element_by_name('username')
-    username.send_keys(usr)
+    username.send_keys(insta_email)
     password = browser.find_element_by_name('password')
-    password.send_keys(pwd)
+    password.send_keys(insta_password)
     submit = browser.find_element_by_tag_name('form')
     submit.submit()
     input("press anything to quit")
@@ -119,16 +129,17 @@ def otp_checking():
 def existing_user():
     #This function verifies whether the user is an existing user or not
     with open("masterpass_email.txt","r") as f:
-        mp=f.readline().rstrip()
+        master_pass_encrypted = f.readline()
+        email_encrypted = f.readline()
          
     
     login_mp=stdiomask.getpass(prompt="Enter your masterpassword:")
     
-    if mp ==login_mp:
+    if master_pass == login_mp:
         print("Entered masterpassword is correct, please check your email for the otp")
         otp_email()
         otp_checking()
-    elif login_mp!=mp:
+    elif login_mp!=master_pass:
         print("you have entered wrong masterpassword, please retry from the begining")
     else:
         print("wrong")
